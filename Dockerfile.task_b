@@ -21,6 +21,7 @@ COPY core/user_profile.py ./core/user_profile.py
 COPY tasks/__init__.py ./tasks/__init__.py
 COPY tasks/task_b.py ./tasks/task_b.py
 COPY tasks/frontend.py ./tasks/frontend.py
+COPY tasks/frontend.html ./tasks/frontend.html
 
 RUN useradd -m -u 1001 appuser
 USER appuser
