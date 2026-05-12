@@ -47,8 +47,8 @@ YELP_BUSINESS_PATH = DATASETS_DIR / "Yelp-JSON" / "Yelp JSON" / "yelp_academic_d
 
 AMAZON_DIR         = DATASETS_DIR / "amazon_food" / "full"
 
-GOODREADS_REVIEWS  = DATASETS_DIR / "goodreads_reviews_dedup.json"
-GOODREADS_BOOKS    = DATASETS_DIR / "goodreads_books.json"
+GOODREADS_REVIEWS  = DATASETS_DIR / "goodreads_reviews_dedup.json" / "goodreads_reviews_dedup.json"
+GOODREADS_BOOKS    = DATASETS_DIR / "goodreads_books.json" / "goodreads_books.json"
 
 # Tuning knobs
 MIN_REVIEWS_PER_USER = 15       # minimum reviews to be a "rich" user
@@ -456,13 +456,13 @@ if __name__ == "__main__":
 
     stats = {}
 
-    yelp_stats = prepare_yelp()
-    if yelp_stats:
-        stats["yelp"] = yelp_stats
+  #  yelp_stats = prepare_yelp()
+  #  if yelp_stats:
+  #      stats["yelp"] = yelp_stats
 
-    amazon_stats = prepare_amazon()
-    if amazon_stats:
-        stats["amazon"] = amazon_stats
+   # amazon_stats = prepare_amazon()
+   # if amazon_stats:
+   #     stats["amazon"] = amazon_stats
 
     goodreads_stats = prepare_goodreads()
     if goodreads_stats:

@@ -25,8 +25,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 import anthropic
+from prompt_toolkit import HTML
 from core.user_profile import UserProfile, build_user_profile
 
+from fastapi.responses import HTMLResponse
+from tasks.frontend import HTML
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -38,8 +41,8 @@ class ItemDetails:
     item_name: str
     category: str
     description: str = ""
-    attributes: list[str] = None          # e.g. ["fast service", "outdoor seating"]
-    price_range: str = ""                 # e.g. "$$" or "affordable" or "premium"
+    attributes: list = None
+    price_range: str = ""
     location: str = ""
 
     def to_prompt_text(self) -> str:
@@ -62,10 +65,10 @@ class ItemDetails:
 class SimulatedReview:
     user_id: str
     item_id: str
-    predicted_rating: float              # 1.0 – 5.0
+    predicted_rating: float
     review_text: str
-    confidence: str                      # "high" | "medium" | "low"
-    reasoning: str                       # chain-of-thought (for paper/debugging)
+    confidence: str
+    reasoning: str
 
 
 # ---------------------------------------------------------------------------
@@ -78,10 +81,11 @@ never seen before, based on everything known about their reviewing patterns and 
 
 The simulation must:
 1. Predict a star rating consistent with the user's rating tendencies
-2. Write a review that matches their vocabulary, tone, length, and style
-3. Reference the specific attributes of the item that align with or contradict their preferences
-4. Use Nigerian Pidgin English and cultural references if the user's profile indicates this
-5. Sound authentic — like this exact person wrote it, not a generic review
+2. Write a review that matches their vocabulary, tone, length, and style EXACTLY
+3. Mirror the sentence structure and phrasing from their actual review examples
+4. Reference the specific attributes of the item that align with or contradict their preferences
+5. Use Nigerian Pidgin English and cultural references if the user's profile indicates this
+6. Sound authentic — like this exact person wrote it, not a generic review
 
 You must respond ONLY with a JSON object — no preamble, no markdown fences."""
 
@@ -90,7 +94,7 @@ def simulate_review(
     profile: UserProfile,
     item: ItemDetails,
     client: Optional[anthropic.Anthropic] = None,
-    few_shot_reviews: list[dict] = None,
+    few_shot_reviews: list = None,
 ) -> SimulatedReview:
     """
     Simulate a user's review for an item they haven't reviewed.
@@ -103,11 +107,11 @@ def simulate_review(
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-    # Build few-shot examples block
+    # Build few-shot examples block — 8 examples for better style capture
     few_shot_block = ""
     if few_shot_reviews:
-        examples = few_shot_reviews[-5:]  # most recent 5
-        few_shot_block = "\n\nEXAMPLES OF THIS USER'S ACTUAL REVIEWS (use as style reference):\n"
+        examples = few_shot_reviews[-8:]  # most recent 8
+        few_shot_block = "\n\nEXAMPLES OF THIS USER'S ACTUAL REVIEWS (mirror their style exactly):\n"
         for r in examples:
             few_shot_block += (
                 f"\n[{r.get('category', '')} | {r.get('rating', '?')}/5 stars]\n"
@@ -115,6 +119,8 @@ def simulate_review(
             )
 
     prompt = f"""You must simulate how this specific user would review the item below.
+Your goal is to sound EXACTLY like this person — same vocabulary, same sentence structure,
+same length, same quirks. A judge should not be able to tell the difference.
 
 {profile.to_prompt_context()}
 {few_shot_block}
@@ -122,42 +128,71 @@ def simulate_review(
 ITEM TO REVIEW:
 {item.to_prompt_text()}
 
-SIMULATION INSTRUCTIONS:
-- Their average rating is {profile.rating.mean:.1f}/5 with tendency: {profile.rating.tendency}
-- They typically write {profile.style.length_tendency} reviews (~{profile.style.avg_length_words} words)
-- Their tone is {profile.style.tone}, formality: {profile.style.formality}
-- Uses Pidgin: {'YES — incorporate naturally' if profile.style.uses_pidgin else 'No'}
+STRICT STYLE RULES — follow these exactly:
+- Match their typical review length of ~{profile.style.avg_length_words} words
+- Use their tone: {profile.style.tone} and formality: {profile.style.formality}
+- Mirror their sentence structure from the examples above
+- Reuse their characteristic phrases where natural: {', '.join(profile.style.signature_phrases[:5]) if profile.style.signature_phrases else 'none'}
+- Uses Pidgin: {'YES — use Nigerian Pidgin English naturally throughout' if profile.style.uses_pidgin else 'No Pidgin'}
+- Punctuation style: {profile.style.punctuation_style}
+
+RATING LOGIC:
+- Their average is {profile.rating.mean:.1f}/5, tendency: {profile.rating.tendency}
 - Loved attributes to praise if present: {', '.join(profile.preferences.loved_attributes[:4])}
 - Disliked attributes to criticise if present: {', '.join(profile.preferences.disliked_attributes[:4])}
-- Deal-breakers (would drop rating significantly): {', '.join(profile.preferences.deal_breakers[:3])}
+- Deal-breakers that drop rating: {', '.join(profile.preferences.deal_breakers[:3])}
+- Must-haves that raise rating: {', '.join(profile.preferences.must_haves[:3])}
 
 Reason through:
 1. Which item attributes match or conflict with their preferences?
-2. What rating would this person most likely give and why?
-3. How would they express this in their natural voice?
+2. What rating (to nearest 0.5) would they give?
+3. Write the review in their exact voice — not a generic review.
 
 Return ONLY this JSON:
 {{
-  "predicted_rating": <float 1.0-5.0, round to nearest 0.5>,
-  "review_text": "<the simulated review>",
+  "predicted_rating": <float 1.0-5.0, nearest 0.5>,
+  "review_text": "<the simulated review — must sound like this specific person>",
   "confidence": "<high|medium|low>",
-  "reasoning": "<2-3 sentences explaining your rating and style choices>"
+  "reasoning": "<2 sentences on rating and style choices>"
 }}"""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=1000,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    raw = ""
+    for attempt in range(3):
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=1000,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = response.content[0].text.strip()
 
-    raw = response.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+            # Strip markdown fences
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
 
-    data = json.loads(raw.strip())
+            # Extract JSON object
+            match = re.search(r'\{.*\}', raw, re.DOTALL)
+            if match:
+                raw = match.group(0)
+
+            # Remove control characters
+            raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
+            # Fix trailing commas
+            raw = re.sub(r',\s*([}\]])', r'\1', raw)
+
+            data = json.loads(raw.strip())
+            break
+
+        except json.JSONDecodeError:
+            if attempt < 2:
+                import time
+                time.sleep(2)
+                continue
+            else:
+                raise
 
     return SimulatedReview(
         user_id=profile.user_id,
@@ -175,11 +210,10 @@ Return ONLY this JSON:
 
 def batch_simulate(
     profile: UserProfile,
-    items: list[ItemDetails],
-    few_shot_reviews: list[dict] = None,
+    items: list,
+    few_shot_reviews: list = None,
     client: Optional[anthropic.Anthropic] = None,
-) -> list[SimulatedReview]:
-    """Run simulation for multiple items for a single user."""
+) -> list:
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     results = []
@@ -194,10 +228,6 @@ def batch_simulate(
 # ---------------------------------------------------------------------------
 
 def create_app():
-    """
-    Creates the FastAPI application for Task A submission.
-    Run with: uvicorn tasks.task_a:create_app --factory --host 0.0.0.0 --port 8000
-    """
     try:
         from fastapi import FastAPI, HTTPException
         from pydantic import BaseModel
@@ -212,8 +242,8 @@ def create_app():
 
     class ReviewRequest(BaseModel):
         user_id: str
-        review_history: list[dict]       # list of past review dicts
-        item: dict                       # ItemDetails as dict
+        review_history: list
+        item: dict
         include_reasoning: bool = False
 
     class ReviewResponse(BaseModel):
@@ -225,6 +255,12 @@ def create_app():
         reasoning: str = ""
 
     _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+
+    @app.get("/", response_class=HTMLResponse)
+    async def homepage():
+        return HTML
+    
 
     @app.post("/simulate", response_model=ReviewResponse)
     async def simulate_endpoint(request: ReviewRequest):

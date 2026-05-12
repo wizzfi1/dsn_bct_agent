@@ -23,12 +23,16 @@ Evaluated on:
 
 import json
 import os
+import re
+import time
 from dataclasses import dataclass
 from typing import Optional
 
 import anthropic
 from core.user_profile import UserProfile, build_user_profile
 
+from fastapi.responses import HTMLResponse
+from tasks.frontend import HTML
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -40,28 +44,28 @@ class CandidateItem:
     item_name: str
     category: str
     description: str = ""
-    attributes: list[str] = None
+    attributes: list = None
     price_range: str = ""
     avg_rating: float = 0.0
-    popularity: int = 0               # number of reviews (proxy for popularity)
+    popularity: int = 0
 
 
 @dataclass
 class RankedRecommendation:
     item: CandidateItem
-    score: float                      # 0.0 – 1.0 relevance score
+    score: float
     rank: int
-    explanation: str                  # why this was recommended
-    matched_preferences: list[str]    # which user preferences this satisfies
-    caveats: list[str]                # potential mismatches to warn about
+    explanation: str
+    matched_preferences: list
+    caveats: list
 
 
 @dataclass
 class RecommendationResult:
     user_id: str
-    recommendations: list[RankedRecommendation]
-    reasoning_trace: str              # full agent reasoning (for paper)
-    cold_start: bool                  # True if profile was built from elicitation
+    recommendations: list
+    reasoning_trace: str
+    cold_start: bool
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +80,7 @@ COLD_START_QUESTIONS = [
     },
     {
         "id": "q2",
-        "question": "On a scale of 1–5, how would you typically rate something you find just okay (not great, not terrible)?",
+        "question": "On a scale of 1-5, how would you typically rate something you find just okay (not great, not terrible)?",
         "type": "rating_anchor",
     },
     {
@@ -87,17 +91,30 @@ COLD_START_QUESTIONS = [
 ]
 
 
+def _clean_json(raw: str) -> str:
+    """Clean and extract JSON from LLM response."""
+    raw = raw.strip()
+    if raw.startswith("```"):
+        parts = raw.split("```")
+        raw = parts[1] if len(parts) >= 2 else raw
+        if raw.startswith("json"):
+            raw = raw[4:]
+    raw = raw.strip()
+    match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if match:
+        raw = match.group(0)
+    raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
+    raw = re.sub(r',\s*([}\]])', r'\1', raw)
+    return raw.strip()
+
+
 def build_cold_start_profile(
     user_id: str,
     elicitation_answers: dict,
     client: Optional[anthropic.Anthropic] = None,
 ) -> UserProfile:
-    """
-    Build a UserProfile for a new user from structured elicitation answers.
-    elicitation_answers: {"q1": "...", "q2": "3", "q3": "..."}
-    """
     from core.user_profile import (
-        UserProfile, RatingProfile, StyleProfile,
+        RatingProfile, StyleProfile,
         PreferenceProfile, BehaviouralProfile
     )
 
@@ -108,43 +125,44 @@ def build_cold_start_profile(
     q2 = elicitation_answers.get("q2", "3")
     q3 = elicitation_answers.get("q3", "")
 
-    # Use rating anchor to estimate their tendency
     try:
         anchor = float(q2)
     except ValueError:
         anchor = 3.0
 
-    # LLM interprets qualitative answers into structured preferences
     prompt = f"""A new user answered three preference questions. Extract their profile.
 
 Q1 (interests): {q1}
-Q2 (rating anchor — they'd rate an "okay" item): {q2}/5
+Q2 (rating anchor): {q2}/5
 Q3 (deal-breaker): {q3}
 
 Return ONLY this JSON:
 {{
-  "top_categories": ["<cat>", ...],
-  "loved_attributes": ["<attr>", ...],
-  "disliked_attributes": ["<attr>", ...],
-  "deal_breakers": ["<attr>"],
-  "must_haves": ["<attr>", ...],
+  "top_categories": ["<cat1>", "<cat2>"],
+  "loved_attributes": ["<attr1>", "<attr2>"],
+  "disliked_attributes": ["<attr1>"],
+  "deal_breakers": ["<attr1>"],
+  "must_haves": ["<attr1>", "<attr2>"],
   "tone": "<warm|neutral|critical|enthusiastic>",
   "summary": "<1-2 sentence profile>"
 }}"""
 
-    resp = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=600,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = resp.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    data = json.loads(raw.strip())
+    for attempt in range(3):
+        try:
+            resp = client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=600,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = _clean_json(resp.content[0].text)
+            data = json.loads(raw)
+            break
+        except json.JSONDecodeError:
+            if attempt < 2:
+                time.sleep(1)
+                continue
+            raise
 
-    # Estimate mean rating: if they'd give 3 to "okay", they're balanced
     mean = 3.0 + (anchor - 3.0) * 0.5
     tendency = "generous" if mean >= 4.0 else "harsh" if mean <= 2.5 else "balanced"
 
@@ -203,83 +221,77 @@ You think step-by-step:
 Nigerian cultural context matters: if the user has Nigerian cultural signals,
 factor in local relevance, familiarity, and cultural fit.
 
-Respond ONLY with a JSON object — no preamble, no markdown fences."""
+Respond ONLY with a JSON object — no preamble, no markdown fences.
+Keep all string values concise — maximum 20 words per explanation."""
 
 
 def recommend(
     profile: UserProfile,
-    candidates: list[CandidateItem],
+    candidates: list,
     top_k: int = 10,
     context: str = "",
     client: Optional[anthropic.Anthropic] = None,
 ) -> RecommendationResult:
-    """
-    Core recommendation function.
-
-    profile: UserProfile (warm or cold-start)
-    candidates: pool of items to rank
-    top_k: number of recommendations to return (NDCG@10 requires k>=10)
-    context: optional additional context ("looking for a birthday dinner", etc.)
-    """
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-    # Format candidate pool
+    # Cap candidates to avoid token overflow
+    candidates = candidates[:25]
+    top_k = min(top_k, len(candidates))
+
+    # Format candidate pool — keep it concise
     candidates_block = "\n".join(
-        f"[{i+1}] id={c.item_id} | {c.item_name} | {c.category} | "
-        f"avg_rating={c.avg_rating:.1f} | "
-        f"attrs: {', '.join(c.attributes or [])} | "
-        f"price: {c.price_range} | "
-        f"desc: {c.description[:100]}"
+        f"[{i+1}] id={c.item_id} | {c.item_name[:40]} | {c.category} | "
+        f"rating={c.avg_rating:.1f} | price={c.price_range}"
         for i, c in enumerate(candidates)
     )
 
-    context_block = f"\nADDITIONAL CONTEXT FROM USER: {context}\n" if context else ""
+    context_block = f"\nCONTEXT: {context}\n" if context else ""
 
     prompt = f"""{profile.to_prompt_context()}
 {context_block}
-CANDIDATE ITEMS TO RANK:
+CANDIDATES:
 {candidates_block}
 
-TASK: Rank the top {top_k} items for this user.
+Rank the top {top_k} items for this user.
 
-For each recommended item, reason through:
-- Does it match their loved attributes?
-- Does it trigger any deal-breakers?
-- Is it relevant to their top categories?
-- How does the price range fit their expectations?
-
-Return ONLY this JSON:
+Return ONLY this JSON (keep explanations under 15 words each):
 {{
-  "reasoning_trace": "<your step-by-step thinking process>",
+  "reasoning_trace": "<brief step-by-step thinking, max 50 words>",
   "recommendations": [
     {{
-      "item_id": "<id>",
+      "item_id": "<exact id from candidates>",
       "score": <float 0.0-1.0>,
-      "explanation": "<why this is recommended for this specific user>",
-      "matched_preferences": ["<pref1>", ...],
-      "caveats": ["<potential mismatch>", ...]
-    }},
-    ...
+      "explanation": "<why recommended, max 15 words>",
+      "matched_preferences": ["<pref1>"],
+      "caveats": []
+    }}
   ]
 }}
 
-Order recommendations from best match (score closest to 1.0) to worst.
-Include exactly {top_k} items."""
+Include exactly {top_k} recommendations ordered best to worst."""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=2000,
-        system=RECOMMENDATION_SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=3000,
+                system=RECOMMENDATION_SYSTEM,
+                messages=[{"role": "user", "content": prompt}],
+            )
 
-    raw = response.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    data = json.loads(raw.strip())
+            raw = _clean_json(response.content[0].text)
+            data = json.loads(raw)
+            break
+
+        except json.JSONDecodeError as e:
+            last_error = e
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            else:
+                raise ValueError(f"JSON parse failed after 3 attempts: {last_error}")
 
     # Map item_id back to CandidateItem objects
     item_map = {c.item_id: c for c in candidates}
@@ -310,30 +322,21 @@ Include exactly {top_k} items."""
 # ---------------------------------------------------------------------------
 
 class RecommendationSession:
-    """
-    Manages a multi-turn recommendation conversation.
-    The agent updates its understanding of the user as they give feedback.
-    """
-
-    def __init__(self, profile: UserProfile, candidates: list[CandidateItem]):
+    def __init__(self, profile: UserProfile, candidates: list):
         self.profile = profile
         self.candidates = candidates
-        self.conversation_history: list[dict] = []
-        self.excluded_items: set[str] = set()
+        self.conversation_history: list = []
+        self.excluded_items: set = set()
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
     def get_recommendations(self, user_message: str = "", top_k: int = 5) -> RecommendationResult:
-        """Get or refine recommendations based on user feedback."""
-
-        # Exclude already-rejected items
         active_candidates = [c for c in self.candidates if c.item_id not in self.excluded_items]
-
         context = " | ".join(
             f"{m['role']}: {m['content']}"
-            for m in self.conversation_history[-4:]  # last 2 turns
+            for m in self.conversation_history[-4:]
         )
         if user_message:
-            context += f" | Latest feedback: {user_message}"
+            context += f" | Latest: {user_message}"
 
         result = recommend(
             profile=self.profile,
@@ -349,23 +352,17 @@ class RecommendationSession:
             "role": "assistant",
             "content": f"Recommended: {[r.item.item_name for r in result.recommendations[:3]]}",
         })
-
         return result
 
     def reject_item(self, item_id: str):
-        """User explicitly rejects an item — exclude from future recommendations."""
         self.excluded_items.add(item_id)
 
 
 # ---------------------------------------------------------------------------
-# FastAPI app (containerised submission endpoint)
+# FastAPI app
 # ---------------------------------------------------------------------------
 
 def create_app():
-    """
-    Creates the FastAPI application for Task B submission.
-    Run with: uvicorn tasks.task_b:create_app --factory --host 0.0.0.0 --port 8001
-    """
     try:
         from fastapi import FastAPI, HTTPException
         from pydantic import BaseModel
@@ -380,25 +377,25 @@ def create_app():
 
     class WarmRequest(BaseModel):
         user_id: str
-        review_history: list[dict]
-        candidates: list[dict]
+        review_history: list
+        candidates: list
         top_k: int = 10
         context: str = ""
 
     class ColdStartRequest(BaseModel):
         user_id: str
-        elicitation_answers: dict     # {"q1": "...", "q2": "3", "q3": "..."}
-        candidates: list[dict]
+        elicitation_answers: dict
+        candidates: list
         top_k: int = 10
 
     class RecResponse(BaseModel):
         user_id: str
-        recommendations: list[dict]
+        recommendations: list
         cold_start: bool
 
     _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-    def _parse_candidates(raw: list[dict]) -> list[CandidateItem]:
+    def _parse_candidates(raw: list) -> list:
         return [
             CandidateItem(
                 item_id=c.get("item_id", ""),
@@ -412,6 +409,12 @@ def create_app():
             )
             for c in raw
         ]
+
+
+    @app.get("/", response_class=HTMLResponse)
+    async def homepage():
+        return HTML
+
 
     @app.post("/recommend/warm", response_model=RecResponse)
     async def recommend_warm(request: WarmRequest):
