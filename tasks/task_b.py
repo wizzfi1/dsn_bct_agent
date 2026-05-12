@@ -9,12 +9,6 @@ Handles:
   - Cross-domain  (recommend across different categories)
   - Multi-turn    (update profile as conversation progresses)
 
-Agentic workflow (reason before recommending):
-  1. Analyse user profile  →  identify preference vectors
-  2. Retrieve candidates   →  filter item pool by compatibility
-  3. Score & rank          →  score each candidate against profile
-  4. Explain               →  generate natural language justification
-
 Evaluated on:
   - NDCG@10 / Hit Rate      (30 pts)
   - Cold-start & cross-domain performance (25 pts)
@@ -31,10 +25,6 @@ from typing import Optional
 import anthropic
 from core.user_profile import UserProfile, build_user_profile
 
-
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
 
 @dataclass
 class CandidateItem:
@@ -65,10 +55,6 @@ class RecommendationResult:
     reasoning_trace: str
     cold_start: bool
 
-
-# ---------------------------------------------------------------------------
-# Cold-start elicitation
-# ---------------------------------------------------------------------------
 
 COLD_START_QUESTIONS = [
     {
@@ -202,10 +188,6 @@ Return ONLY this JSON:
     )
 
 
-# ---------------------------------------------------------------------------
-# Recommendation agent
-# ---------------------------------------------------------------------------
-
 RECOMMENDATION_SYSTEM = """You are an expert recommendation agent. Your job is to rank
 candidate items for a specific user based on their profile, and explain your reasoning clearly.
 
@@ -309,10 +291,6 @@ Include exactly {top_k} recommendations ordered best to worst."""
     )
 
 
-# ---------------------------------------------------------------------------
-# Multi-turn conversation handler
-# ---------------------------------------------------------------------------
-
 class RecommendationSession:
     def __init__(self, profile: UserProfile, candidates: list):
         self.profile = profile
@@ -350,13 +328,10 @@ class RecommendationSession:
         self.excluded_items.add(item_id)
 
 
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
-
 def create_app():
     try:
         from fastapi import FastAPI, HTTPException
+        from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import HTMLResponse
         from pydantic import BaseModel
         from tasks.frontend import HTML
@@ -367,6 +342,14 @@ def create_app():
         title="DSN BCT Task B — Personalised Recommendation",
         description="Delivers personalised recommendations from a user persona.",
         version="1.0.0",
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     class WarmRequest(BaseModel):

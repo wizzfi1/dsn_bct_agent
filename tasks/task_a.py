@@ -11,11 +11,6 @@ Evaluated on:
   - Rating accuracy       (RMSE)
   - Behavioural fidelity  (human eval — does it sound like them?)
   - Nigerian localisation bonus
-
-API contract (for containerised submission):
-  Input:  UserPersona (user_id + review history OR pre-built profile)
-          ItemDetails (name, category, attributes, description)
-  Output: SimulatedReview (rating, text, confidence, reasoning)
 """
 
 import json
@@ -27,10 +22,6 @@ from typing import Optional
 import anthropic
 from core.user_profile import UserProfile, build_user_profile
 
-
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
 
 @dataclass
 class ItemDetails:
@@ -67,10 +58,6 @@ class SimulatedReview:
     confidence: str
     reasoning: str
 
-
-# ---------------------------------------------------------------------------
-# Review simulation agent
-# ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT = """You are an expert at user behaviour modelling and persona simulation.
 Your task is to simulate how a specific user would review a product or service they have
@@ -188,10 +175,6 @@ Return ONLY this JSON:
     )
 
 
-# ---------------------------------------------------------------------------
-# Batch simulation
-# ---------------------------------------------------------------------------
-
 def batch_simulate(
     profile: UserProfile,
     items: list,
@@ -207,13 +190,10 @@ def batch_simulate(
     return results
 
 
-# ---------------------------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------------------------
-
 def create_app():
     try:
         from fastapi import FastAPI, HTTPException
+        from fastapi.middleware.cors import CORSMiddleware
         from fastapi.responses import HTMLResponse
         from pydantic import BaseModel
         from tasks.frontend import HTML
@@ -224,6 +204,14 @@ def create_app():
         title="DSN BCT Task A — User Review Simulation",
         description="Simulates user reviews and ratings for unseen items based on user history.",
         version="1.0.0",
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     class ReviewRequest(BaseModel):
