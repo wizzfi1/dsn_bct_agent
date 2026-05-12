@@ -358,12 +358,6 @@ All datasets are used with appropriate disclosure per competition rules.
 
 ---
 
-## Solution Paper
-
-The full 4–8 page solution paper covering architecture decisions, experiments, ablation studies, and future work is included as `DSN_BCT_Solution_Paper.docx` in the repository root.
-
----
-
 ## Requirements
 
 ```
