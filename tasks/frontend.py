@@ -236,11 +236,11 @@ HTML = """
   // Update these URLs after deploying to Render
   const TASK_A_URL = window.location.origin.includes('8000')
     ? 'http://localhost:8000'
-    : 'https://dsn-bct-task-a.onrender.com';
+    : 'https://dsn-bct-task-a-sjjw.onrender.com';
 
   const TASK_B_URL = window.location.origin.includes('8001')
     ? 'http://localhost:8001'
-    : 'https://dsn-bct-task-b.onrender.com';
+    : 'https://dsn-bct-task-b-2gl8.onrender.com';
 
   // ── Tab switching ─────────────────────────────────────────────────────────
   function switchTab(name) {
