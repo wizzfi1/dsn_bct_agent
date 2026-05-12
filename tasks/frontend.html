@@ -42,6 +42,7 @@
       background: #FAFBFC; margin-bottom: 16px;
     }
     textarea { resize: vertical; min-height: 100px; }
+    textarea.code { font-family: monospace; font-size: 12px; }
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
@@ -100,7 +101,7 @@
 
 <div class="header">
   <h1>DSN x BCT LLM Agent Challenge 3.0</h1>
-  <p>Unified User Modelling and Personalised Recommendation Agent &nbsp;·&nbsp; Built with Claude Sonnet</p>
+  <p>Unified User Modelling and Personalised Recommendation Agent &nbsp;</p>
 </div>
 
 <div class="tabs">
@@ -173,12 +174,47 @@
 1 | Hotels | Very dirty room and rude staff. Never again.</textarea>
 
       <label>Candidate Items (JSON array)</label>
-      <textarea id="b-candidates" rows="8">[
-  {"item_id":"c001","item_name":"Bukka Hut VI","category":"Nigerian Cuisine","attributes":["local food","affordable","amala"],"avg_rating":4.7,"popularity":850},
-  {"item_id":"c002","item_name":"The Yellow Chilli","category":"Nigerian Fine Dining","attributes":["premium","local dishes","elegant"],"avg_rating":4.8,"popularity":500},
-  {"item_id":"c003","item_name":"Mama Put Central","category":"Street Food","attributes":["affordable","local","pepper soup"],"avg_rating":4.3,"popularity":2000},
-  {"item_id":"c004","item_name":"Sky Lounge","category":"Bar","attributes":["expensive","cocktails","slow service"],"avg_rating":3.5,"popularity":200},
-  {"item_id":"c005","item_name":"Tantalizers","category":"Fast Food","attributes":["fast service","local menu","affordable"],"avg_rating":3.8,"popularity":1200}
+      <textarea id="b-candidates" class="code" rows="12">[
+  {
+    "item_id": "c001",
+    "item_name": "Bukka Hut VI",
+    "category": "Nigerian Cuisine",
+    "attributes": ["local food", "affordable", "amala"],
+    "avg_rating": 4.7,
+    "popularity": 850
+  },
+  {
+    "item_id": "c002",
+    "item_name": "The Yellow Chilli",
+    "category": "Nigerian Fine Dining",
+    "attributes": ["premium", "local dishes", "elegant"],
+    "avg_rating": 4.8,
+    "popularity": 500
+  },
+  {
+    "item_id": "c003",
+    "item_name": "Mama Put Central",
+    "category": "Street Food",
+    "attributes": ["affordable", "local", "pepper soup"],
+    "avg_rating": 4.3,
+    "popularity": 2000
+  },
+  {
+    "item_id": "c004",
+    "item_name": "Sky Lounge",
+    "category": "Bar",
+    "attributes": ["expensive", "cocktails", "slow service"],
+    "avg_rating": 3.5,
+    "popularity": 200
+  },
+  {
+    "item_id": "c005",
+    "item_name": "Tantalizers",
+    "category": "Fast Food",
+    "attributes": ["fast service", "local menu", "affordable"],
+    "avg_rating": 3.8,
+    "popularity": 1200
+  }
 ]</textarea>
 
       <button id="btn-b" onclick="runTaskB()">Get Recommendations</button>
@@ -208,12 +244,47 @@
       <input id="cold-q3" value="Bad service and overpriced food with no value for money" />
 
       <label style="margin-top:8px;">Candidate Items (JSON array)</label>
-      <textarea id="cold-candidates" rows="8">[
-  {"item_id":"c001","item_name":"Bukka Hut VI","category":"Nigerian Cuisine","attributes":["local food","affordable","amala"],"avg_rating":4.7,"popularity":850},
-  {"item_id":"c002","item_name":"Chinese Palace","category":"Chinese","attributes":["dim sum","quiet","expensive"],"avg_rating":4.2,"popularity":300},
-  {"item_id":"c003","item_name":"Mama Put Central","category":"Street Food","attributes":["affordable","local","pepper soup"],"avg_rating":4.3,"popularity":2000},
-  {"item_id":"c004","item_name":"Sky Lounge","category":"Bar","attributes":["expensive","cocktails","slow service"],"avg_rating":3.5,"popularity":200},
-  {"item_id":"c005","item_name":"Tantalizers","category":"Fast Food","attributes":["fast service","local menu","affordable"],"avg_rating":3.8,"popularity":1200}
+      <textarea id="cold-candidates" class="code" rows="12">[
+  {
+    "item_id": "c001",
+    "item_name": "Bukka Hut VI",
+    "category": "Nigerian Cuisine",
+    "attributes": ["local food", "affordable", "amala"],
+    "avg_rating": 4.7,
+    "popularity": 850
+  },
+  {
+    "item_id": "c002",
+    "item_name": "Chinese Palace",
+    "category": "Chinese",
+    "attributes": ["dim sum", "quiet", "expensive"],
+    "avg_rating": 4.2,
+    "popularity": 300
+  },
+  {
+    "item_id": "c003",
+    "item_name": "Mama Put Central",
+    "category": "Street Food",
+    "attributes": ["affordable", "local", "pepper soup"],
+    "avg_rating": 4.3,
+    "popularity": 2000
+  },
+  {
+    "item_id": "c004",
+    "item_name": "Sky Lounge",
+    "category": "Bar",
+    "attributes": ["expensive", "cocktails", "slow service"],
+    "avg_rating": 3.5,
+    "popularity": 200
+  },
+  {
+    "item_id": "c005",
+    "item_name": "Tantalizers",
+    "category": "Fast Food",
+    "attributes": ["fast service", "local menu", "affordable"],
+    "avg_rating": 3.8,
+    "popularity": 1200
+  }
 ]</textarea>
 
       <button id="btn-cold" onclick="runColdStart()">Get Cold-Start Recommendations</button>
