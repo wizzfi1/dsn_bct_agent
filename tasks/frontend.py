@@ -106,7 +106,7 @@ HTML = """
 
 <div class="header">
   <h1>DSN × BCT LLM Agent Challenge 3.0</h1>
-  <p>Unified User Modelling &amp; Personalised Recommendation Agent &nbsp;·&nbsp; Built with Claude Sonnet</p>
+  <p>Unified User Modelling &amp; Personalised Recommendation Agent &nbsp;·&nbsp;</p>
 </div>
 
 <div class="tabs">

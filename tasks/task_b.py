@@ -31,8 +31,6 @@ from typing import Optional
 import anthropic
 from core.user_profile import UserProfile, build_user_profile
 
-from fastapi.responses import HTMLResponse
-from tasks.frontend import HTML
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -92,7 +90,6 @@ COLD_START_QUESTIONS = [
 
 
 def _clean_json(raw: str) -> str:
-    """Clean and extract JSON from LLM response."""
     raw = raw.strip()
     if raw.startswith("```"):
         parts = raw.split("```")
@@ -235,11 +232,9 @@ def recommend(
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-    # Cap candidates to avoid token overflow
     candidates = candidates[:25]
     top_k = min(top_k, len(candidates))
 
-    # Format candidate pool — keep it concise
     candidates_block = "\n".join(
         f"[{i+1}] id={c.item_id} | {c.item_name[:40]} | {c.category} | "
         f"rating={c.avg_rating:.1f} | price={c.price_range}"
@@ -280,11 +275,9 @@ Include exactly {top_k} recommendations ordered best to worst."""
                 system=RECOMMENDATION_SYSTEM,
                 messages=[{"role": "user", "content": prompt}],
             )
-
             raw = _clean_json(response.content[0].text)
             data = json.loads(raw)
             break
-
         except json.JSONDecodeError as e:
             last_error = e
             if attempt < 2:
@@ -293,7 +286,6 @@ Include exactly {top_k} recommendations ordered best to worst."""
             else:
                 raise ValueError(f"JSON parse failed after 3 attempts: {last_error}")
 
-    # Map item_id back to CandidateItem objects
     item_map = {c.item_id: c for c in candidates}
     ranked = []
     for rank, r in enumerate(data["recommendations"], 1):
@@ -365,7 +357,9 @@ class RecommendationSession:
 def create_app():
     try:
         from fastapi import FastAPI, HTTPException
+        from fastapi.responses import HTMLResponse
         from pydantic import BaseModel
+        from tasks.frontend import HTML
     except ImportError:
         raise ImportError("Install fastapi and uvicorn: pip install fastapi uvicorn")
 
@@ -410,11 +404,9 @@ def create_app():
             for c in raw
         ]
 
-
     @app.get("/", response_class=HTMLResponse)
     async def homepage():
         return HTML
-
 
     @app.post("/recommend/warm", response_model=RecResponse)
     async def recommend_warm(request: WarmRequest):

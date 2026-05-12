@@ -25,11 +25,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import anthropic
-from prompt_toolkit import HTML
 from core.user_profile import UserProfile, build_user_profile
 
-from fastapi.responses import HTMLResponse
-from tasks.frontend import HTML
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -96,21 +93,12 @@ def simulate_review(
     client: Optional[anthropic.Anthropic] = None,
     few_shot_reviews: list = None,
 ) -> SimulatedReview:
-    """
-    Simulate a user's review for an item they haven't reviewed.
-
-    profile: pre-built UserProfile from the User Profile Engine
-    item: details about the item to review
-    few_shot_reviews: optional list of the user's actual past reviews
-                      (most powerful signal — include if available)
-    """
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-    # Build few-shot examples block — 8 examples for better style capture
     few_shot_block = ""
     if few_shot_reviews:
-        examples = few_shot_reviews[-8:]  # most recent 8
+        examples = few_shot_reviews[-8:]
         few_shot_block = "\n\nEXAMPLES OF THIS USER'S ACTUAL REVIEWS (mirror their style exactly):\n"
         for r in examples:
             few_shot_block += (
@@ -167,20 +155,16 @@ Return ONLY this JSON:
             )
             raw = response.content[0].text.strip()
 
-            # Strip markdown fences
             if raw.startswith("```"):
                 raw = raw.split("```")[1]
                 if raw.startswith("json"):
                     raw = raw[4:]
 
-            # Extract JSON object
             match = re.search(r'\{.*\}', raw, re.DOTALL)
             if match:
                 raw = match.group(0)
 
-            # Remove control characters
             raw = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
-            # Fix trailing commas
             raw = re.sub(r',\s*([}\]])', r'\1', raw)
 
             data = json.loads(raw.strip())
@@ -205,7 +189,7 @@ Return ONLY this JSON:
 
 
 # ---------------------------------------------------------------------------
-# Batch simulation (for evaluation runs)
+# Batch simulation
 # ---------------------------------------------------------------------------
 
 def batch_simulate(
@@ -224,13 +208,15 @@ def batch_simulate(
 
 
 # ---------------------------------------------------------------------------
-# FastAPI app (containerised submission endpoint)
+# FastAPI app
 # ---------------------------------------------------------------------------
 
 def create_app():
     try:
         from fastapi import FastAPI, HTTPException
+        from fastapi.responses import HTMLResponse
         from pydantic import BaseModel
+        from tasks.frontend import HTML
     except ImportError:
         raise ImportError("Install fastapi and uvicorn: pip install fastapi uvicorn")
 
@@ -256,11 +242,9 @@ def create_app():
 
     _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-
     @app.get("/", response_class=HTMLResponse)
     async def homepage():
         return HTML
-    
 
     @app.post("/simulate", response_model=ReviewResponse)
     async def simulate_endpoint(request: ReviewRequest):

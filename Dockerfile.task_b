@@ -16,13 +16,12 @@ WORKDIR /app
 
 COPY --from=builder /install /usr/local
 
-# Copy only the source files needed for Task B
 COPY core/__init__.py ./core/__init__.py
 COPY core/user_profile.py ./core/user_profile.py
 COPY tasks/__init__.py ./tasks/__init__.py
 COPY tasks/task_b.py ./tasks/task_b.py
+COPY tasks/frontend.py ./tasks/frontend.py
 
-# Non-root user for security
 RUN useradd -m -u 1001 appuser
 USER appuser
 
