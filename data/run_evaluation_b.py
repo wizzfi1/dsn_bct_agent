@@ -1,6 +1,6 @@
 """
 Task B Evaluation
-==================
+
 Runs recommendation agent on held-out users and measures:
   - NDCG@10, NDCG@5   (ranking quality — 30 pts)
   - Hit Rate@10, @5

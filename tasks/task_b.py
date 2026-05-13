@@ -1,6 +1,6 @@
 """
 Task B: Recommendation Agent
-==============================
+
 Given a UserProfile, rank and recommend items tailored to that user.
 
 Handles:

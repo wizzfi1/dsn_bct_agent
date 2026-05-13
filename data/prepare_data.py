@@ -1,6 +1,6 @@
 """
 Data Preparation Script
-========================
+====
 ONE-TIME RUN — zero API calls, zero cost.
 
 What this does:
@@ -34,9 +34,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
 # Configuration — update paths if needed
-# ---------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).parent.parent
 DATASETS_DIR = BASE_DIR / "datasets"
@@ -59,9 +57,7 @@ TEST_RATIO           = 0.2      # 20% held out for evaluation
 RANDOM_SEED          = 42
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 def ensure_output_dir():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -119,9 +115,7 @@ def train_test_split(reviews: list[dict], test_ratio: float = 0.2, seed: int = 4
     return train, test
 
 
-# ---------------------------------------------------------------------------
 # Yelp preparation
-# ---------------------------------------------------------------------------
 
 def prepare_yelp():
     print("\n" + "="*60)
@@ -245,9 +239,7 @@ def prepare_yelp():
     }
 
 
-# ---------------------------------------------------------------------------
 # Amazon preparation
-# ---------------------------------------------------------------------------
 
 def prepare_amazon():
     print("\n" + "="*60)
@@ -362,9 +354,7 @@ def prepare_amazon():
     }
 
 
-# ---------------------------------------------------------------------------
 # Goodreads preparation
-# ---------------------------------------------------------------------------
 
 def prepare_goodreads():
     print("\n" + "="*60)
@@ -444,9 +434,7 @@ def prepare_goodreads():
     return {"users": len(selected), "train": len(train_reviews), "test": len(test_reviews)}
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("DSN BCT — Data Preparation Script")

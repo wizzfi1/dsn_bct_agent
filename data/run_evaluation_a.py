@@ -1,6 +1,6 @@
 """
 Task A Evaluation
-==================
+
 Runs review simulation on held-out test reviews and measures:
   - ROUGE-1, ROUGE-2, ROUGE-L  (text quality)
   - BERTScore F1               (semantic similarity)

@@ -1,6 +1,6 @@
 """
 Dataset Loaders
-===============
+
 Unified interface for loading Yelp, Amazon Reviews, and Goodreads datasets
 into the standard review dict format consumed by the User Profile Engine.
 
@@ -24,9 +24,7 @@ from pathlib import Path
 from typing import Iterator
 
 
-# ---------------------------------------------------------------------------
 # Yelp
-# ---------------------------------------------------------------------------
 
 def load_yelp_reviews(
     review_path: str,
@@ -80,9 +78,7 @@ def load_yelp_user_reviews(
     ]
 
 
-# ---------------------------------------------------------------------------
 # Amazon Reviews
-# ---------------------------------------------------------------------------
 
 def load_amazon_reviews(
     json_gz_path: str,
@@ -128,9 +124,7 @@ def load_amazon_user_reviews(
     ]
 
 
-# ---------------------------------------------------------------------------
 # Goodreads
-# ---------------------------------------------------------------------------
 
 def load_goodreads_reviews(
     review_path: str,
@@ -176,9 +170,7 @@ def load_goodreads_reviews(
             count += 1
 
 
-# ---------------------------------------------------------------------------
 # User index builder (for fast lookup)
-# ---------------------------------------------------------------------------
 
 def build_user_index(
     reviews: list[dict],
@@ -215,9 +207,7 @@ def find_rich_users(
     return [uid for uid, _ in qualified[:top_n]]
 
 
-# ---------------------------------------------------------------------------
 # Sample data generator (for development/testing without real datasets)
-# ---------------------------------------------------------------------------
 
 SAMPLE_REVIEWS = [
     {

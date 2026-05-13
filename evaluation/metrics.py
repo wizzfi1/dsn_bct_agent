@@ -1,6 +1,6 @@
 """
 Evaluation Harness
-===================
+
 Implements all metrics used in the hackathon scoring rubric.
 
 Task A metrics:
@@ -65,9 +65,7 @@ class TaskBResults:
 
 class Evaluator:
 
-    # -----------------------------------------------------------------------
     # Task A
-    # -----------------------------------------------------------------------
 
     def evaluate_task_a(
         self,
@@ -185,9 +183,7 @@ class Evaluator:
         mse = sum((p - r) ** 2 for p, r in zip(predictions, references)) / len(predictions)
         return math.sqrt(mse)
 
-    # -----------------------------------------------------------------------
     # Task B
-    # -----------------------------------------------------------------------
 
     def evaluate_task_b(
         self,

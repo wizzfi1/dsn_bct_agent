@@ -1,6 +1,6 @@
 """
 End-to-end smoke test
-======================
+
 Runs both Task A and Task B using the sample Nigerian reviewer
 from data/loaders.py — no real dataset needed.
 

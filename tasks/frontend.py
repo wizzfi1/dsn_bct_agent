@@ -1,6 +1,6 @@
 """
 Agent Demo Webpage
-===================
+
 Loads frontend HTML from file — avoids Python string escaping issues.
 """
 

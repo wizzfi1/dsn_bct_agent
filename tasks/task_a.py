@@ -1,6 +1,6 @@
 """
 Task A: User Modeling Agent
-============================
+
 Given a UserProfile and an item the user has NOT reviewed,
 simulate:
   1. The star rating they would give (1–5)

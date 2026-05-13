@@ -1,6 +1,6 @@
 """
 Ablation Studies
-=================
+
 Runs three targeted ablations to prove each component contributes.
 
 Ablation 1: Task A without few-shot examples
@@ -94,9 +94,7 @@ def popularity_rank(candidates, top_k):
     return [c.item_id for c, _ in scored[:top_k]]
 
 
-# ---------------------------------------------------------------------------
 # Ablation 1: Task A without few-shot examples
-# ---------------------------------------------------------------------------
 
 def ablation_1_no_few_shot(source: str, limit: int, delay: float):
     print(f"\n{'='*60}", flush=True)
@@ -210,9 +208,7 @@ def ablation_1_no_few_shot(source: str, limit: int, delay: float):
     }
 
 
-# ---------------------------------------------------------------------------
 # Ablation 2: Task B without UserProfile (popularity baseline)
-# ---------------------------------------------------------------------------
 
 def ablation_2_no_profile(source: str, limit: int):
     print(f"\n{'='*60}", flush=True)
@@ -294,9 +290,7 @@ def ablation_2_no_profile(source: str, limit: int):
     }
 
 
-# ---------------------------------------------------------------------------
 # Ablation 3: Cold-start vs warm profile
-# ---------------------------------------------------------------------------
 
 def ablation_3_cold_vs_warm(source: str, limit: int, delay: float):
     print(f"\n{'='*60}", flush=True)
@@ -417,9 +411,7 @@ def ablation_3_cold_vs_warm(source: str, limit: int, delay: float):
     }
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

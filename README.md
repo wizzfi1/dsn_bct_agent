@@ -1,8 +1,8 @@
 # DSN × BCT LLM Agent Challenge 3.0
 ### A Unified LLM Agent Architecture for User Modeling and Personalised Recommendation
 
-[![Task A](https://img.shields.io/badge/Task%20A-Review%20Simulation-2E5FA3)](http://localhost:8000/docs)
-[![Task B](https://img.shields.io/badge/Task%20B-Recommendation-1B7F3A)](http://localhost:8001/docs)
+[![Task A](https://img.shields.io/badge/Task%20A-Review%20Simulation-2E5FA3)](https://dsn-bct-task-a-sjjw.onrender.com/docs)
+[![Task B](https://img.shields.io/badge/Task%20B-Recommendation-1B7F3A)](https://dsn-bct-task-b-2gl8.onrender.com/docs)
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![Docker](https://img.shields.io/badge/Docker-multi--stage-2496ED)](https://docker.com)
 
@@ -16,6 +16,16 @@ A single shared **User Profile Engine** extracts a rich, structured persona from
 
 - **Task A** — simulates reviews a user would write for unseen items, in their exact voice
 - **Task B** — delivers personalised recommendations with explicit reasoning, handling both warm users and cold-start new users
+
+---
+
+## Live Demo
+
+| Service | URL |
+|---------|-----|
+| Task A — Review Simulation | https://dsn-bct-task-a-sjjw.onrender.com |
+| Task B — Recommendation | https://dsn-bct-task-b-2gl8.onrender.com |
+| Interactive Demo Page | https://dsn-bct-task-a-sjjw.onrender.com |
 
 ---
 
@@ -95,7 +105,7 @@ This is the fastest way to run both tasks. Judges should use this method.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/dsn-bct-agent.git
+git clone https://github.com/wizzfi1/dsn_bct_agent.git
 cd dsn-bct-agent
 ```
 

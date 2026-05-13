@@ -1,6 +1,6 @@
 """
 User Profile Engine
-====================
+
 Shared foundation for both Task A (User Modeling) and Task B (Recommendation).
 
 Given a user's review history, this module extracts a rich, structured
@@ -21,9 +21,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 import anthropic
 
-# ---------------------------------------------------------------------------
 # Data structures
-# ---------------------------------------------------------------------------
 
 @dataclass
 class RatingProfile:
@@ -116,9 +114,7 @@ class UserProfile:
         return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
 # Profile extraction
-# ---------------------------------------------------------------------------
 
 def _compute_rating_stats(reviews: list[dict]) -> tuple[float, float, dict]:
     ratings = [float(r["rating"]) for r in reviews if "rating" in r]
