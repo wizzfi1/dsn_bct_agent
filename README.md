@@ -44,24 +44,49 @@ A single shared **User Profile Engine** extracts a rich, structured persona from
 
 ## Architecture
 
+![System Architecture](https://raw.githubusercontent.com/wizzfi1/dsn_bct_agent/main/assets/arch_diagram.png)
+
+*Figure 1: Shared User Profile Engine feeding both Task A and Task B agents, with cold-start elicitation path and live evaluation results.*
+
+### How it works
+
 ```
-Raw Review History
-       │
-       ▼
-┌─────────────────────────┐
-│    User Profile Engine   │  ← shared foundation (core/user_profile.py)
-│  RatingProfile           │
-│  StyleProfile            │  extracts: tone, length, Pidgin flag,
-│  PreferenceProfile       │           loved/disliked attrs, deal-breakers
-│  BehaviouralProfile      │
-└─────────────────────────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
- Task A     Task B
- Review     Recommendation
- Agent      Agent
- :8000      :8001
+Raw Review History (Yelp · Amazon · Goodreads)
+              │
+              ▼
+┌─────────────────────────────────────────────┐
+│            User Profile Engine              │  core/user_profile.py
+│                                             │
+│  RatingProfile    → mean · std · tendency   │
+│  StyleProfile     → tone · Pidgin · length  │
+│  PreferenceProfile→ loves · deal-breakers   │
+│  BehaviouralProfile→ frequency · culture    │
+│                                             │
+│  🇳🇬  Nigerian Pidgin · Cultural Signals    │
+│       Local References · Code-switching     │
+│                                             │
+│  ✓ Disk-cached after first extraction      │
+│  ✓ ~1,500 tokens per user (one-time cost)  │
+└─────────────────────────────────────────────┘
+         │                        │
+         ▼                        ▼
+┌─────────────────┐     ┌──────────────────────┐
+│     Task A      │     │       Task B          │
+│ Review Simulation│     │   Recommendation     │
+│                 │     │                      │
+│ 8 few-shot      │     │ Reason before rank   │
+│ exemplars       │     │ NDCG@10 scoring      │
+│ Rating predict  │     │ Cold-start support   │
+│ Voice mimicry   │     │ Multi-turn sessions  │
+│                 │     │                      │
+│ POST /simulate  │     │ POST /recommend/warm │
+│ Port :8000      │     │ Port :8001           │
+└─────────────────┘     └──────────────────────┘
+
+Cold-Start path (new users — no history needed):
+  3 Questions → Synthetic Profile → Task B
+  Q1: Interests  Q2: Rating anchor  Q3: Deal-breaker
+  Result: NDCG@10 within 0.02 of full warm profiles
 ```
 
 For cold-start users (no review history), a **3-question elicitation protocol** bootstraps a complete profile from minimal input — achieving NDCG@10 within 0.02 of full warm profiles.
